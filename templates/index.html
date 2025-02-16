@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FounderAI - Virtual Business Coach</title>
+    <title>MeowAI - Virtual Business Coach</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -111,7 +111,7 @@
 
     <div class="chat-container">
         <div class="chat-header">
-            FounderAI - Virtual Business Coach
+            MeowAI - Virtual Business Coach
         </div>
         <div class="chat-body" id="chat-body">
             <!-- Chat messages will be added dynamically -->
@@ -146,11 +146,11 @@
                 const formattedResponse = formatMarkdown(data.response);
 
                 // Add AI response
-                chatBody.innerHTML += `<div class="message assistant"><strong>FounderAI:</strong> ${formattedResponse}</div>`;
+                chatBody.innerHTML += `<div class="message assistant"><strong>MeowAI:</strong> ${formattedResponse}</div>`;
                 chatBody.scrollTop = chatBody.scrollHeight; // Auto-scroll
             } catch (error) {
                 console.error("Error fetching response:", error);
-                chatBody.innerHTML += `<div class="message assistant"><strong>FounderAI:</strong> Error fetching response. Try again later.</div>`;
+                chatBody.innerHTML += `<div class="message assistant"><strong>MeowAI:</strong> Error fetching response. Try again later.</div>`;
             }
         }
 
