@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FounderAI - Virtual Business Coach</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 500px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: #007bff;
+            color: #fff;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .chat-body {
+            padding: 15px;
+            height: 350px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-footer {
+            display: flex;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+
+        .chat-footer input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .chat-footer button {
+            background: #007bff;
+            color: #fff;
+            border: none;
+            padding: 12px 15px;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: 0.3s;
+        }
+
+        .chat-footer button:hover {
+            background: #0056b3;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .user {
+            background: #007bff;
+            color: #fff;
+            align-self: flex-end;
+            text-align: right;
+            margin-left: auto;
+        }
+
+        .assistant {
+            background: #e0e0e0;
+            align-self: flex-start;
+            text-align: left;
+        }
+
+        .message h3 {
+            font-size: 1.1em;
+            margin: 5px 0;
+        }
+
+        .message strong {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            FounderAI - Virtual Business Coach
+        </div>
+        <div class="chat-body" id="chat-body">
+            <!-- Chat messages will be added dynamically -->
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="user-input" placeholder="Ask me anything about startups..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const userInput = document.getElementById("user-input").value.trim();
+            if (!userInput) return;
+
+            const chatBody = document.getElementById("chat-body");
+
+            // Add user message
+            chatBody.innerHTML += `<div class="message user"><strong>You:</strong> ${userInput}</div>`;
+            document.getElementById("user-input").value = "";
+            chatBody.scrollTop = chatBody.scrollHeight; // Auto-scroll
+
+            try {
+                // Send message to backend
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: userInput })
+                });
+
+                const data = await response.json();
+                const formattedResponse = formatMarkdown(data.response);
+
+                // Add AI response
+                chatBody.innerHTML += `<div class="message assistant"><strong>FounderAI:</strong> ${formattedResponse}</div>`;
+                chatBody.scrollTop = chatBody.scrollHeight; // Auto-scroll
+            } catch (error) {
+                console.error("Error fetching response:", error);
+                chatBody.innerHTML += `<div class="message assistant"><strong>FounderAI:</strong> Error fetching response. Try again later.</div>`;
+            }
+        }
+
+        // Handle Enter key press
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                sendMessage();
+            }
+        }
+
+        function formatMarkdown(text) {
+            // Convert **bold** text
+            text = text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+            // Convert ### headers
+            text = text.replace(/### (.*?)(\n|$)/g, "<h3>$1</h3>");
+
+            return text;
+        }
+    </script>
+
+</body>
+</html>
