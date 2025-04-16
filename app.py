@@ -65,7 +65,7 @@ def chat():
 
         chat_session = user_chat_sessions[session_id]
         response = chat_session.send_message(user_input)
-        return jsonify({"response": f"MeowAI: {response.text}"})
+        return jsonify({"response": f"{response.text}"})
     except KeyError:
          return jsonify({"error": "Invalid request format. 'message' key missing."}), 400
     except Exception as e:
