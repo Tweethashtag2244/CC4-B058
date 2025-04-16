@@ -1,80 +1,88 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session
 import os
-from openai import OpenAI
+import google.generativeai as genai
 from dotenv import load_dotenv
-
-# Load environment variables
+import uuid
 load_dotenv()
-
-# Initialize Flask app
 app = Flask(__name__)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", os.urandom(24))
 
-# AIML API Key from env variables
-AI_MLAPI_KEY ="59753fb258ea4fad8f31866955c2f21e"
-
-# OpenAI Client for AIML API
-client = OpenAI(
-    base_url="https://api.aimlapi.com/v1",
-    api_key=AI_MLAPI_KEY,
-)
-
-# Conversation history and user preferences
-conversation_history = []
-user_preferences = {}
-
-def summarize_conversation(history):
-    """Summarizes long conversation history for context retention."""
-    summary_prompt = "Summarize the following conversation in 2-3 sentences:\n"
-    summary_prompt += "\n".join([f"{m['role']}: {m['content']}" for m in history])
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": summary_prompt}]
+try:
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in environment variables.")
+    genai.configure(api_key=api_key)
+    system_instruction = (
+        "You are MeowAI, a professional virtual business coach. "
+        "You provide actionable business advice, help with strategic planning, "
+        "market analysis, startup mentoring, and decision-making support. "
+        "Only answer questions from a business coaching perspective. "
+        "Keep responses relevant to business, finance, startups, productivity, or entrepreneurship. "
+        "Be concise and actionable."
     )
-    return response.choices[0].message.content
 
-def virtual_business_coach(prompt):
-    """Handles AI-powered business coaching responses."""
-    global conversation_history
+    model = genai.GenerativeModel(
+        model_name="gemini-2.0-flash",
+        system_instruction=system_instruction
 
-    conversation_history.append({"role": "user", "content": prompt})
-
-    # Summarize if too long
-    if len(conversation_history) > 6:
-        summary = summarize_conversation(conversation_history)
-        conversation_history = [
-            {"role": "system", "content": summary},
-            conversation_history[-2],
-            conversation_history[-1]
-        ]
-
-    # AI Response
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=conversation_history
     )
-    ai_response = response.choices[0].message.content
 
-    conversation_history.append({"role": "assistant", "content": ai_response})
-    return ai_response
+except ValueError as e:
+    print(f"Error initializing Gemini: {e}")
+    model = None
+except Exception as e:
+    print(f"An unexpected error occurred during Gemini initialization: {e}")
+    model = None
+
+user_chat_sessions = {}
 
 @app.route("/")
 def home():
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+        print(f"New session created: {session['session_id']}")
     return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    """Handles user chat input."""
-    user_input = request.json.get("message")
-    response = virtual_business_coach(user_input)
-    return jsonify({"response": response})
+    if not model:
+         return jsonify({"error": "Chat model not initialized. Please check server configuration."}), 500
 
-@app.route("/set_preferences", methods=["POST"])
-def set_preferences():
-    """Updates user preferences."""
-    global user_preferences
-    user_preferences = request.json.get("preferences", {})
-    return jsonify({"status": "success", "preferences": user_preferences})
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+        print(f"Session ID missing, created new one: {session['session_id']}")
+
+    session_id = session['session_id']
+
+    try:
+        user_input = request.json.get("message")
+        if not user_input:
+            return jsonify({"error": "No message provided"}), 400
+
+        if session_id not in user_chat_sessions:
+            print(f"Starting new chat session for {session_id}")
+            user_chat_sessions[session_id] = model.start_chat(history=[])
+
+        chat_session = user_chat_sessions[session_id]
+        response = chat_session.send_message(user_input)
+        return jsonify({"response": f"MeowAI: {response.text}"})
+    except KeyError:
+         return jsonify({"error": "Invalid request format. 'message' key missing."}), 400
+    except Exception as e:
+        print(f"Error during chat processing for session {session_id}: {e}")
+        return jsonify({"error": f"An internal error occurred: {e}"}), 500
+@app.route("/clear_chat", methods=["POST"])
+def clear_chat():
+    session_id = session.get('session_id')
+    if session_id and session_id in user_chat_sessions:
+        del user_chat_sessions[session_id]
+        print(f"Cleared chat history for session {session_id}")
+        return jsonify({"status": "Chat history cleared"}), 200
+    elif session_id:
+         return jsonify({"status": "No active chat history to clear"}), 200
+    else:
+        return jsonify({"error": "No session found"}), 400
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
